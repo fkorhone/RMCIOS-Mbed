@@ -30,7 +30,7 @@ along with RMCIOS.  If not, see <http://www.gnu.org/licenses/>.
 /*
  * Changelog: (date,who,description)
  */
-#define VERSION_STR "MBED" 
+#define VERSION_STR "Mbed" 
  
 #include "mbed.h"
 #include "RMCIOS-system.h"
@@ -47,7 +47,7 @@ CREATE_STATIC_CHANNEL_SYSTEM_DATA (ch_sys_dat, 80, 180);
 int main (void)
 {
    printf ("\nRMCIOS - Reactive Multipurpose Control Input Output Systen\r\n["
-         "] \r\n");
+           "] \r\n");
    printf ("Copyright (c) 2018 Frans Korhonen\n");
    printf ("\nInitializing system:\r\n");
    ////////////////////////////////////////////////////////////////////////
@@ -64,14 +64,8 @@ int main (void)
    init_mbed_channels(context) ;
    init_mbed_platform_channels(context) ; 
    
-/*  init_mbed_ethernet_channels(context) ;
-    printf("Configure ethernet:\r\n") ;
-    write_str (context, context->control, "setup eth 192.168.10.11 255.255.255.0 192.168.0.1\n",0);
-    write_str (context, context->control, "create udp_server udp_ctl\n",0);
-    write_str (context, context->control, "setup udp_ctl 1300\n",0);
-    write_str (context, context->control, "link udp_ctl control\n",0);  
-*/
-   write_str (context, context->control, "read as control file /local/conf.ini\n" , 0);
+   write_str(context, context->control, 
+             "read as control file /local/conf.ini\n", 0);
    
    ///////////////////////////////////////////////////////////////////////
    // initial configuration 

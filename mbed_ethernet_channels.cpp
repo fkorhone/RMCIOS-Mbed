@@ -1,10 +1,34 @@
-/* 2015 Frans Korhonen. University of Helsinki.
- *
- */
-#ifndef mbed_ethernet_channels_h
-#define mbed_ethernet_channels_h
+/* 
+RMCIOS - Reactive Multipurpose Control Input Output System
+Copyright (c) 2018 Frans Korhonen
+
+RMCIOS was originally developed at Institute for Atmospheric 
+and Earth System Research / Physics, Faculty of Science, 
+University of Helsinki, Finland
+
+Assistance, experience and feedback from following persons have been 
+critical for development of RMCIOS: Erkki Siivola, Juha Kangasluoma, 
+Lauri Ahonen, Ella Häkkinen, Pasi Aalto, Joonas Enroth, Runlong Cai, 
+Markku Kulmala and Tuukka Petäjä.
+
+This file is part of RMCIOS. This notice was encoded using utf-8.
+
+RMCIOS is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+RMCIOS is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public Licenses
+along with RMCIOS.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #if DEVICE_ETHERNET == 1
+
 #include "EthernetInterface.h"
 #include "RMCIOS-functions.h"
 
@@ -19,75 +43,81 @@ char eth_configured=0;
 
 void ethernet_class_func(const struct context_rmcios *context, 
                          void *data, int id, int function,
-                         enum type_rmcios paramtype,union param_rmcios returnv, 
+                         enum type_rmcios paramtype,
+                         union param_rmcios returnv, 
                          int num_params,union param_rmcios param)
 {
-    int iplen ;
-    int masklen ;
-    int gwlen ;
+ int iplen ;
+ int masklen ;
+ int gwlen ;
+ switch(function) 
+ {
+    case help_rmcios:
+       return_string(context, paramtype,returnv,
+             "help for ethernet interface channel\r\n"
+             " setup eth # Configure ethernet with DHCP\r\n"
+             " setup eth ip_addr ipmask gateway # Manual configuration\r\n"
+             ) ;
+       break ;
 
-    switch(function) {
-        case help_rmcios:
-            return_string(context, paramtype,returnv,
-            "help for ethernet interface channel\r\n"
-            " setup eth # Configure ethernet with DHCP\r\n"
-            " setup eth ip_addr ipmask gateway # Manual configuration\r\n"
-            ) ;
-            break ;
+    case setup_rmcios :
+       // Allocate ethernet interface.
+       if(eth==NULL) eth = new EthernetInterface ;
+       if(eth==NULL) break ;
+       if(eth_configured==1) {
+          return_string(context, paramtype,returnv,
+                "Ethernet can only be configured once.") ;
+          break ;
+       }
 
-        case setup_rmcios :
-            if(eth==NULL) eth = new EthernetInterface ; // Allocate ethernet interface.
-            if(eth==NULL) break ;
-            if(eth_configured==1) {
-                return_string(context, paramtype,returnv,"Ethernet can only be configured once.") ;
-                break ;
-            }
+       if(num_params<3) {
+          return_string(context, paramtype,returnv,
+                "Configuring ethernet with DHCP:") ;
+          eth_configured=1;
+          eth->init() ; // dhcp config
+          eth->connect();
 
-            if(num_params<3) {
-                return_string(context, paramtype,returnv,"Configuring ethernet with DHCP:") ;
-                eth_configured=1;
-                eth->init() ; // dhcp config
-                eth->connect();
-                
-                return_string(context, paramtype,returnv,"Ethernet configuration:\r\n") ;
-                return_string(context, paramtype,returnv,"ip:");
-                return_string(context, paramtype,returnv,eth->getIPAddress());
-                return_string(context, paramtype,returnv,"\r\nipmask:");
-                return_string(context, paramtype,returnv,eth->getNetworkMask());
-                return_string(context, paramtype,returnv,"\r\ngateway:");
-                return_string(context, paramtype,returnv,eth->getGateway());
-                return_string(context, paramtype,returnv,"\r\n");
-                break ;
-            }
+          return_string(context, paramtype,returnv,
+                "Ethernet configuration:\r\n") ;
+          return_string(context, paramtype,returnv,"ip:");
+          return_string(context, paramtype,returnv,eth->getIPAddress());
+          return_string(context, paramtype,returnv,"\r\nipmask:");
+          return_string(context, paramtype,returnv,eth->getNetworkMask());
+          return_string(context, paramtype,returnv,"\r\ngateway:");
+          return_string(context, paramtype,returnv,eth->getGateway());
+          return_string(context, paramtype,returnv,"\r\n");
+          break ;
+       }
 
-            iplen=param_string_length(context, paramtype,param,0)+1 ;
-            masklen=param_string_length(context, paramtype,param,1)+1 ;
-            gwlen=param_string_length(context, paramtype,param,2)+1 ;
-            {
+       iplen = param_string_length(context, paramtype, param, 0)+1;
+       masklen = param_string_length(context, paramtype, param, 1)+1;
+       gwlen = param_string_length(context, paramtype, param, 2)+1;
+       {
 
-                char ip[iplen] ;
-                char ipmask[masklen] ;
-                char gateway[gwlen] ;
-                param_to_string(context, paramtype, param, 0,iplen,ip) ;
-                param_to_string(context, paramtype, param, 1,masklen,ipmask) ;
-                param_to_string(context, paramtype, param, 2,gwlen,gateway) ;
+          char ip[iplen] ;
+          char ipmask[masklen] ;
+          char gateway[gwlen] ;
+          param_to_string(context, paramtype, param, 0, iplen, ip);
+          param_to_string(context, paramtype, param, 1, masklen, ipmask);
+          param_to_string(context, paramtype, param, 2, gwlen, gateway);
 
-                printf("setup manual ip: %s %s %s\r\n",ip,ipmask,gateway) ;
-                eth_configured=1;
-                eth->init(ip,ipmask,gateway) ; // manual ip config
-                eth->connect();
+          printf("setup manual ip: %s %s %s\r\n", ip, ipmask, gateway) ;
+          eth_configured=1;
+          eth->init(ip,ipmask,gateway) ; // manual ip config
+          eth->connect();
 
-                return_string(context, paramtype,returnv,"Ethernet configuration:\r\n") ;
-                return_string(context, paramtype,returnv,"ip:");
-                return_string(context, paramtype,returnv,eth->getIPAddress());
-                return_string(context, paramtype,returnv,"\r\nipmask:");
-                return_string(context, paramtype,returnv,eth->getNetworkMask());
-                return_string(context, paramtype,returnv,"\r\ngateway:");
-                return_string(context, paramtype,returnv,eth->getGateway());
-                return_string(context, paramtype,returnv,"\r\n");
-            }
-            break ;
-    }
+          return_string(context, paramtype,returnv,
+                        "Ethernet configuration:\r\n") ;
+          return_string(context, paramtype, returnv, "ip:");
+          return_string(context, paramtype, returnv, eth->getIPAddress());
+          return_string(context, paramtype, returnv, "\r\nipmask:");
+          return_string(context, paramtype, returnv, eth->getNetworkMask());
+          return_string(context, paramtype, returnv, "\r\ngateway:");
+          return_string(context, paramtype, returnv, eth->getGateway());
+          return_string(context, paramtype, returnv, "\r\n");
+       }
+       break ;
+ }
 }
 
 ////////////////////////////////////////////////////////////////////////
@@ -100,10 +130,14 @@ struct tcp_connection_data {
     bool closed ;
 };
 
-void tcp_client_class_func(const struct context_rmcios *context, 
-                           void* data,int id, int function,
-                           enum type_rmcios paramtype,union param_rmcios returnv, 
-                           int num_params,union param_rmcios param)
+void tcp_client_class_func(void* data,
+                           const struct context_rmcios *context,
+                           int id, 
+                           int function,
+                           enum type_rmcios paramtype,
+                           union param_rmcios returnv, 
+                           int num_params,
+                           union param_rmcios param)
 {
     tcp_connection_data *p_data=(tcp_connection_data *)data ;
     int plen ;
@@ -115,15 +149,17 @@ void tcp_client_class_func(const struct context_rmcios *context,
            " setup newname ip port #Open connection\r\n"
            " setup newname #Close connection\r\n"
            " write newname #Flush all buffers\r\n"
-           " write newname data #Write data to the connection. Reconnect if needed\r\n"
+           " write newname data #Write data to the connection.\r\n"
+           "       Reconnect if needed\r\n"
            " link newname channel # Link received data to channel\r\n"
            ) ;
             break ;
         case create_rmcios :
             if(num_params<1) break ;
             if(eth==NULL) break ;
-
-            p_data= new struct tcp_connection_data ; // allocate new data
+            
+            // allocate new data
+            p_data= new struct tcp_connection_data; 
 
             // default values
             p_data->host[0]=0;
@@ -143,12 +179,12 @@ void tcp_client_class_func(const struct context_rmcios *context,
                 break ;
             }
             if(num_params<2) break ;
-            param_to_string(context, paramtype, param, 0, sizeof(p_data->host),p_data->host) ;
+            param_to_string(context, paramtype, param, 0, 
+                            sizeof(p_data->host),p_data->host) ;
             p_data->port=param_to_int(context, paramtype,param,1) ;
             p_data->closed=true ;
-            //p_data->socket.connect(p_data->host,p_data->port);
-            //if(p_data->socket.is_connected()) p_data->socket.close();
             break ;
+
         case write_rmcios :
             if(p_data==NULL) break ;
             if(num_params<1) { // Close connection
@@ -160,17 +196,23 @@ void tcp_client_class_func(const struct context_rmcios *context,
 
             /// If socket is not open. Try 3 times to open connection:
             if(!p_data->socket.is_connected() || p_data->closed==true ) {
-                if(p_data->socket.connect(p_data->host,p_data->port)==0) p_data->closed=false ;
+                if(p_data->socket.connect(p_data->host,p_data->port)==0) {
+                   p_data->closed=false ;
+                }
                 else p_data->closed=false ;
             }
             if(!p_data->socket.is_connected() || p_data->closed==true ) {
                 Thread::wait(200);
-                if(p_data->socket.connect(p_data->host,p_data->port)==0) p_data->closed=false ;
+                if(p_data->socket.connect(p_data->host,p_data->port)==0) {
+                   p_data->closed=false ;
+                }
                 else p_data->closed=false ;
             }
             if(!p_data->socket.is_connected() || p_data->closed==true ) {
                 Thread::wait(200);
-                if(p_data->socket.connect(p_data->host,p_data->port)==0) p_data->closed=false ;
+                if(p_data->socket.connect(p_data->host,p_data->port)==0) {
+                   p_data->closed=false ;
+                }
                 else p_data->closed=false ;
             }
 
@@ -180,15 +222,19 @@ void tcp_client_class_func(const struct context_rmcios *context,
                 int retry;
                 struct buffer_rmcios p ;
                 p=param_to_buffer(context, paramtype,param, 0, plen, buffer) ;
+                // retry 3 times
                 for(retry=0 ;
-                        retry<3 && p_data->socket.send(p.data , p.length )<0 ;
-                        retry++ ) // retry 3 times
-                    Thread::wait(200); // Wait for socket to send properly.
+                    retry<3 && p_data->socket.send(p.data, p.length )<0 ;
+                    retry++)
+                { 
+                    Thread::wait(200);
+                }
                 Thread::wait(100);
             }
             break ;
     }
 }
+
 ///////////////////////////////////////////////////////
 // TCP server channel
 ////////////////////////////////////////////////////////
@@ -221,18 +267,25 @@ void tcpserver_thread(const void *param)
         printf("connection accepted!\r\n") ;
         // receive command
         while( pthis->connection.is_connected() ) {
-            n=pthis->connection.receive( pthis->buffer, sizeof( pthis->buffer)-1 ) ;
+            n=pthis->connection.receive(pthis->buffer,sizeof( pthis->buffer)-1);
             if(n>0) {
-                if( pthis->linked_channels!=0) write_buffer(module_context, pthis->linked_channels,pthis->buffer,n,pthis->id) ;
-            }
+                if( pthis->linked_channels!=0) {
+                   write_buffer(module_context, pthis->linked_channels,
+                                pthis->buffer,n,pthis->id) ;
+                } 
+           }
         }
     }
 }
 
-void tcp_server_class_func(const struct context_rmcios *context,
-                           struct tcpserver_data *pthis, int id, int function,
-                           enum type_rmcios paramtype,union param_rmcios returnv, 
-                           int num_params,union param_rmcios param)
+void tcp_server_class_func(struct tcpserver_data *pthis, 
+                           const struct context_rmcios *context,
+                           int id, 
+                           int function,
+                           enum type_rmcios paramtype,
+                           union param_rmcios returnv, 
+                           int num_params,
+                           union param_rmcios param)
 {
     int plen;
     switch(function) {
@@ -244,27 +297,30 @@ void tcp_server_class_func(const struct context_rmcios *context,
                           "write newname data\r\n"
                           "link newname channel\r\n"
                           );
-            break ;
+            break;
 
         case create_rmcios :
             if(num_params<1) break ;
-            pthis=  (struct tcpserver_data *) malloc(sizeof( struct tcpserver_data)) ; // allocate new data
+            pthis=  (struct tcpserver_data *) 
+                    malloc(sizeof( struct tcpserver_data)) ; 
             
-            //default values :
             pthis->port=0 ;
-            
             pthis->buffer[0]=0;
-            pthis->socket=TCPSocketServer() ;
-            pthis->connection=TCPSocketConnection() ;
+            pthis->socket=TCPSocketServer();
+            pthis->connection=TCPSocketConnection();
+            
             pthis->id=create_channel_param(context, paramtype, param, 0,
-                                           (class_rmcios)tcp_server_class_func, pthis) ; 
+                                           (class_rmcios)tcp_server_class_func,
+                                           pthis); 
             pthis->linked_channels=linked_channels(context, pthis->id) ;
             break;
 
         case setup_rmcios :
             if(pthis==NULL) break ;
             if(num_params<1) {
-                if( !pthis->connection.is_connected() ) pthis->connection.close() ;
+                if( !pthis->connection.is_connected() ){
+                   pthis->connection.close() ;
+                }
                 break ;
             }
             pthis->port=param_to_integer(context, paramtype, param,0);
@@ -276,12 +332,12 @@ void tcp_server_class_func(const struct context_rmcios *context,
         case write_rmcios :
             if(pthis==NULL) break ;
             if(num_params<1) break ;
-            // Determine the needed buffer size
             plen=param_buffer_alloc_size(context, paramtype, param, 0) ; 
             {
-                char buffer[plen] ; // allocate buffer
-                struct buffer_rmcios pbuffer ; // structure pointer to buffer data
-                pbuffer = param_to_buffer(context, paramtype,param, 0, plen , buffer) ;
+                char buffer[plen] ; 
+                struct buffer_rmcios pbuffer ; 
+                pbuffer = param_to_buffer(context, paramtype,param, 0, 
+                                          plen , buffer) ;
                 if(pthis->connection.send(pbuffer.data, pbuffer.length)<0){
                     return_int(context, paramtype, returnv, -1) ;
                     pthis->connection.close() ;
@@ -318,83 +374,100 @@ void udp_server_thread(const void *param)
     }
     while(1) {
         // receive command
-        n=p_data->socket.receiveFrom(p_data->client, p_data->buffer, sizeof(p_data->buffer)-1 ) ;
+        n=p_data->socket.receiveFrom(p_data->client, p_data->buffer, 
+                                     sizeof(p_data->buffer)-1 ) ;
         if(n>0) {
-            if(p_data->linked_channel!=0) write_buffer(module_context, p_data->linked_channel, p_data->buffer, n, p_data->id) ;
+            if(p_data->linked_channel!=0){
+               write_buffer(module_context, p_data->linked_channel, 
+                            p_data->buffer, n, p_data->id) ;
+            }
         }
     }
 }
 
-void udp_server_class_func(const struct context_rmcios *context, 
-                           udp_server_data *p_data,  int id, int function,
-                           enum type_rmcios paramtype,union param_rmcios returnv, 
+void udp_server_class_func(udp_server_data *p_data,  
+                           const struct context_rmcios *context,
+                           int id, 
+                           int function,
+                           enum type_rmcios paramtype,
+                           union param_rmcios returnv, 
                            int num_params,union param_rmcios param)
 {
-    switch(function) {
-        case help_rmcios :
-            return_string(context, paramtype, returnv,
-            "help for udp server channel\r\n"
-            " create udp_server newname\r\n"
-            " setup newname port \r\n"
-            " write newname # flush tansmit buffer)\r\n"
-            " write newname data # write data to tansmit buffer. Flush buffer to ethernet when \\r encountered. \r\n"
-            " link newname channel # Link received data to channel\r\n"
-            ) ;
+ switch(function) 
+ {
+    case help_rmcios :
+       return_string(context, paramtype, returnv,
+             "help for udp server channel\r\n"
+             " create udp_server newname\r\n"
+             " setup newname port \r\n"
+             " write newname \r\n"
+             "        # flush tansmit buffer)\r\n"
+             " write newname data \r\n"
+             "        # write data to tansmit buffer.\r\n"
+             "        Flush buffer to ethernet when \\r encountered. \r\n"
+             " link newname channel \r\n"
+             "        # Link received data to channel\r\n"
+             ) ;
 
-            break ;
-        case create_rmcios :
-            if(num_params<1) break ;
-            if(eth==NULL) break ;
+       break ;
+    case create_rmcios :
+       if(num_params<1) break ;
+       if(eth==NULL) break ;
+       p_data= new struct udp_server_data ;
+       if(p_data==NULL) break ;
 
-            p_data= new struct udp_server_data ; // allocate new data
-            if(p_data==NULL) break ;
+       // Default values:
+       p_data->port=0;
+       p_data->buffer[0]=0;
+       p_data->txbuffer[0]=0 ;
 
-            // Default values:
-            p_data->port=0;
-            p_data->buffer[0]=0;
-            p_data->txbuffer[0]=0 ;
-            
+       // Create the channel
+       p_data->id=create_channel_param(context, paramtype, param, 0, 
+                                       (class_rmcios)udp_server_class_func, 
+                                       p_data) ;
 
-            // Create the channel
-            p_data->id=create_channel_param(context, paramtype, param, 0, (class_rmcios)udp_server_class_func, p_data) ;
-            p_data->linked_channel=linked_channels(context,p_data->id) ;
-            break ;
-        case setup_rmcios :
+       p_data->linked_channel=linked_channels(context,p_data->id);
+       break ;
+    case setup_rmcios :
 
-            if(p_data==NULL) break ;
-            if(num_params<1) break ;
-            else {
-                p_data->port=param_to_int(context, paramtype, param, 0) ;
+       if(p_data==NULL) break ;
+       if(num_params<1) break ;
+       else {
+          p_data->port=param_to_int(context, paramtype, param, 0);
+          new Thread(udp_server_thread, p_data);
+       }
+       break ;
 
-                // Create receive thread
-                new Thread(udp_server_thread, p_data);
-            }
-            break ;
+    case write_rmcios :
+       if(p_data==NULL) break ;
+       if(num_params<1) { // flush buffer
+          p_data->socket.sendTo(p_data->client, p_data->txbuffer, 
+                                strlen(p_data->txbuffer));
+          p_data->txbuffer[0]=0 ;
+          break ;
+       }
 
-        case write_rmcios :
-            if(p_data==NULL) break ;
-            if(num_params<1) { // flush buffer
-                p_data->socket.sendTo(p_data->client, p_data->txbuffer , strlen(p_data->txbuffer));
-                p_data->txbuffer[0]=0 ;
-                break ;
-            }
-
-            // collect data to buffer
-            param_to_string(context, paramtype, param, 0, sizeof(p_data->txbuffer)-strlen(p_data->txbuffer), p_data->txbuffer+strlen(p_data->txbuffer)) ;
-            break ;
-    }
+       // collect data to buffer
+       param_to_string(context, paramtype, param, 0, 
+                       sizeof(p_data->txbuffer)-strlen(p_data->txbuffer), 
+                       p_data->txbuffer+strlen(p_data->txbuffer)) ;
+       break ;
+ }
 }
 
 void init_mbed_ethernet_channels(const struct context_rmcios *context)
 {
     module_context=context ;
-    create_channel_str(context, "eth",(class_rmcios)ethernet_class_func, NULL ) ;
-    create_channel_str(context, "udp_server",(class_rmcios)udp_server_class_func, NULL ) ;
-    // TCP Not usable. (Memory consumption issues.)
-    // create_channel_str("tcp_client",(channel_func) tcp_client_class_func, NULL ) ;
-    // create_channel_str("tcp_server",(channel_func) tcp_server_class_func, NULL ) ;
-}
-#endif
+    create_channel_str(context, "eth",(class_rmcios)ethernet_class_func, NULL);
+    create_channel_str(context, "udp_server",
+                       (class_rmcios)udp_server_class_func, NULL ) ;
 
-#endif
+    // TCP Not usable. (Memory consumption issues.)
+    // create_channel_str("tcp_client",(channel_func) tcp_client_class_func, 
+    //                    NULL ) ;
+    // create_channel_str("tcp_server",(channel_func) tcp_server_class_func, 
+    //                    NULL ) ;
+}
+
+#endif //if DEVICE_ETHERNET == 1
 
